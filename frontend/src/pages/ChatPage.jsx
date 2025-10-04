@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -18,7 +18,7 @@ const ChatPage = () => {
     {
       id: 1,
       type: 'bot',
-      content: "Hey there! I'm your AI Copilot. I can help you with earnings predictions, rest optimization, and driving tips. What would you like to know?",
+      content: "🚀 Hey! I'm your advanced AI Copilot with multi-platform intelligence! I can help you with:\n\n• Multi-platform earnings (rides + eats + jobs)\n• Location intelligence with hexagon precision\n• Weather-aware recommendations\n• Incentive optimization\n• City comparison insights\n\nWhat would you like to explore?",
       timestamp: new Date()
     }
   ]);
@@ -33,23 +33,26 @@ const ChatPage = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages.length]); // Only scroll when messages are added, not on every keystroke
 
   const quickQuestions = [
-    "When should I go online today?",
-    "How much can I earn in 8 hours?",
-    "Is now a good time for a break?",
-    "What are the peak hours in my city?",
-    "How can I improve my rating?"
+    "Should I focus on rides or eats today?",
+    "What's the best hexagon area right now?",
+    "How can I complete this week's quest?",
+    "Will rain affect my earnings today?",
+    "Show me multi-platform earnings prediction"
   ];
 
-  const handleSendMessage = async (message = inputMessage) => {
+  const handleSendMessage = useCallback(async (message = inputMessage) => {
     if (!message.trim() || isLoading) return;
 
+    const messageText = message.trim();
+    const timestamp = Date.now();
+
     const userMessage = {
-      id: Date.now(),
+      id: timestamp,
       type: 'user',
-      content: message.trim(),
+      content: messageText,
       timestamp: new Date()
     };
 
@@ -58,10 +61,10 @@ const ChatPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await chatAPI.sendMessage(message, earnerId);
+      const response = await chatAPI.sendMessage(messageText, earnerId);
       
       const botMessage = {
-        id: Date.now() + 1,
+        id: timestamp + 1, // Ensure unique ID
         type: 'bot',
         content: response.response,
         timestamp: new Date(),
@@ -71,7 +74,7 @@ const ChatPage = () => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       const errorMessage = {
-        id: Date.now() + 1,
+        id: timestamp + 1, // Ensure unique ID
         type: 'bot',
         content: "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
         timestamp: new Date(),
@@ -81,7 +84,7 @@ const ChatPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [inputMessage, isLoading, earnerId]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -90,7 +93,7 @@ const ChatPage = () => {
     }
   };
 
-  const MessageBubble = ({ message }) => {
+  const MessageBubble = useCallback(({ message }) => {
     const isUser = message.type === 'user';
     const isError = message.isError;
 
@@ -160,7 +163,7 @@ const ChatPage = () => {
         </div>
       </motion.div>
     );
-  };
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
@@ -178,9 +181,11 @@ const ChatPage = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto pb-4 min-h-0">
         <AnimatePresence>
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
+          {useMemo(() => 
+            messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            )), [messages]
+          )}
         </AnimatePresence>
         
         {isLoading && (

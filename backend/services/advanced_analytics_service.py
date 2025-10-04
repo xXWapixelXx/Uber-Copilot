@@ -384,4 +384,15 @@ class AdvancedAnalyticsService:
         return recommendations
 
 # Global instance
-advanced_analytics_service = AdvancedAnalyticsService()
+# Create global instance with caching
+_advanced_analytics_service_instance = None
+
+def get_advanced_analytics_service():
+    """Get the global advanced analytics service instance (singleton pattern)"""
+    global _advanced_analytics_service_instance
+    if _advanced_analytics_service_instance is None:
+        _advanced_analytics_service_instance = AdvancedAnalyticsService()
+    return _advanced_analytics_service_instance
+
+# For backward compatibility
+advanced_analytics_service = get_advanced_analytics_service()

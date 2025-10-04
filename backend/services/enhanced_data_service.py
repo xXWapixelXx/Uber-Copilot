@@ -13,7 +13,10 @@ class EnhancedDataService:
     def __init__(self, data_file_path: str = "data/uber_hackathon_v2_mock_data.xlsx"):
         self.data_file_path = data_file_path
         self.data = {}
-        self.load_all_data()
+        self._data_loaded = False
+        if not self._data_loaded:
+            self.load_all_data()
+            self._data_loaded = True
     
     def load_all_data(self):
         """Load all sheets from the Excel file"""
@@ -316,4 +319,15 @@ class EnhancedDataService:
         }
 
 # Global instance
-enhanced_data_service = EnhancedDataService()
+# Create global instance with caching
+_enhanced_data_service_instance = None
+
+def get_enhanced_data_service():
+    """Get the global enhanced data service instance (singleton pattern)"""
+    global _enhanced_data_service_instance
+    if _enhanced_data_service_instance is None:
+        _enhanced_data_service_instance = EnhancedDataService()
+    return _enhanced_data_service_instance
+
+# For backward compatibility
+enhanced_data_service = get_enhanced_data_service()
