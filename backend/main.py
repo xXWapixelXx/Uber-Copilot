@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api import earner_routes, ai_routes, chat_routes
+from api import earner_routes, ai_routes, chat_routes, advanced_routes
 from dotenv import load_dotenv
 import uvicorn
 import os
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(earner_routes.router, prefix="/api/v1", tags=["earners"])
 app.include_router(ai_routes.router, prefix="/api/v1/ai", tags=["ai"])
 app.include_router(chat_routes.router, prefix="/api", tags=["chat"])
+app.include_router(advanced_routes.router, prefix="/api/v1/advanced", tags=["advanced"])
 
 @app.get("/")
 async def root():
