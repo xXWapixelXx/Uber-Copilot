@@ -55,6 +55,13 @@ FastAPI backend for the Uber Smart Copilot application.
 - `GET /api/v1/ai/health` - AI service health check
 - `GET /api/v1/ai/models` - Available Mistral models
 
+### New Simplified API Endpoints
+- `POST /api/chat` - Chat with AI assistant (simplified)
+- `POST /api/earnings/predict` - Get earnings predictions with validation
+- `GET /api/rest/optimize` - Get rest optimization recommendations
+- `GET /api/dashboard/stats` - Get aggregated data for dashboard charts
+- `GET /api/health` - Health check for chat API
+
 ## 📖 API Documentation
 
 Once the server is running, visit:
