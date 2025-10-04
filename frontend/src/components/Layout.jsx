@@ -10,7 +10,8 @@ import {
   X,
   Car,
   User,
-  Settings
+  Settings,
+  Brain
 } from 'lucide-react';
 
 const Layout = ({ children }) => {

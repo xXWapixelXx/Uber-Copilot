@@ -2,8 +2,43 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
+import json
+import numpy as np
 from services.enhanced_data_service import enhanced_data_service
 from services.advanced_analytics_service import advanced_analytics_service
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+def clean_numpy_types(data):
+    """Recursively convert numpy types to Python native types and convert integer keys to strings"""
+    if isinstance(data, dict):
+        # Convert integer keys to strings for Pydantic compatibility
+        cleaned_dict = {}
+        for key, value in data.items():
+            if isinstance(key, (int, np.integer)):
+                cleaned_dict[str(key)] = clean_numpy_types(value)
+            else:
+                cleaned_dict[key] = clean_numpy_types(value)
+        return cleaned_dict
+    elif isinstance(data, list):
+        return [clean_numpy_types(item) for item in data]
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    else:
+        return data
 
 router = APIRouter()
 
@@ -39,8 +74,8 @@ class CityComparisonResponse(BaseModel):
     insights: Dict[str, Any]
 
 class TimePatternsResponse(BaseModel):
-    ride_patterns: Dict[str, Any]
-    eats_patterns: Dict[str, Any]
+    ride_patterns: Dict[str, Any] = Field(..., description="Hourly ride patterns with string keys")
+    eats_patterns: Dict[str, Any] = Field(..., description="Hourly eats patterns with string keys")
     peak_hours: Dict[str, List[int]]
     recommendations: List[str]
 
@@ -168,10 +203,14 @@ async def get_city_comparison():
             }
         }
         
+        # Clean numpy types before returning
+        cleaned_city_comparison = clean_numpy_types(city_comparison)
+        cleaned_insights = clean_numpy_types(insights)
+        
         return CityComparisonResponse(
-            cities=city_comparison,
+            cities=cleaned_city_comparison,
             best_cities=best_cities,
-            insights=insights
+            insights=cleaned_insights
         )
         
     except Exception as e:
@@ -211,13 +250,15 @@ async def get_enhanced_time_patterns():
             "Track weather conditions for demand spikes"
         ])
         
+        # Clean numpy types before returning
+        cleaned_ride_patterns = clean_numpy_types(ride_patterns)
+        cleaned_eats_patterns = clean_numpy_types(eats_patterns)
+        cleaned_peak_hours = clean_numpy_types(time_patterns.get("peak_hours", {}))
+        
         return TimePatternsResponse(
-            ride_patterns=ride_patterns,
-            eats_patterns=eats_patterns,
-            peak_hours={
-                "rides": time_patterns.get("peak_hours", {}).get("rides", []),
-                "eats": time_patterns.get("peak_hours", {}).get("eats", [])
-            },
+            ride_patterns=cleaned_ride_patterns,
+            eats_patterns=cleaned_eats_patterns,
+            peak_hours=cleaned_peak_hours,
             recommendations=recommendations
         )
         
@@ -320,7 +361,9 @@ async def get_platform_statistics():
             "city_distribution": earners['home_city_id'].value_counts().to_dict()
         }
         
-        return stats
+        # Clean numpy types before returning
+        cleaned_stats = clean_numpy_types(stats)
+        return cleaned_stats
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting platform statistics: {str(e)}")

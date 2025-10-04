@@ -73,7 +73,7 @@ class AnalyticsService:
         base_rate = 15.0
         df['mock_earnings'] = base_rate + (df['experience_months'] * 0.1) + (df['rating'] * 2.0)
         
-        experience_earnings = df.groupby('experience_category')['mock_earnings'].mean().to_dict()
+        experience_earnings = df.groupby('experience_category', observed=True)['mock_earnings'].mean().to_dict()
         return experience_earnings
     
     def get_time_patterns(self) -> Dict[str, Any]:

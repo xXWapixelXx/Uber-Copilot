@@ -30,6 +30,9 @@ const DashboardPage = () => {
   const [platformStats, setPlatformStats] = useState(null);
   const [cityComparison, setCityComparison] = useState(null);
   const [timePatterns, setTimePatterns] = useState(null);
+  const [predictiveInsights, setPredictiveInsights] = useState(null);
+  const [aiRecommendations, setAiRecommendations] = useState(null);
+  const [safetyAlerts, setSafetyAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedEarner, setSelectedEarner] = useState('E10000'); // Default earner for demo
 
@@ -38,52 +41,58 @@ const DashboardPage = () => {
   }, []);
 
   const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch all data in parallel
-      const [statsData, platformData, cityData, timeData] = await Promise.all([
-        dashboardAPI.getStats(),
-        advancedAPI.getPlatformStats(),
-        advancedAPI.getCityComparison(),
-        advancedAPI.getTimePatterns()
-      ]);
+    setLoading(true);
+    
+    // Fetch each API independently to avoid one failure breaking everything
+    const fetchStats = async () => {
+      try {
+        const data = await dashboardAPI.getStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        setStats({ error: 'Failed to load dashboard stats' });
+      }
+    };
 
-      setStats(statsData);
-      setPlatformStats(platformData);
-      setCityComparison(cityData);
-      setTimePatterns(timeData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      // Fallback mock data
-      setStats({
-        total_earners: 360,
-        earnings_by_city: { "1": 25.45, "2": 27.89, "3": 26.12, "4": 29.34, "5": 28.98 },
-        earnings_by_experience: {
-          "0-12 months": 25.03,
-          "12-24 months": 26.31,
-          "24-36 months": 27.41,
-          "36-60 months": 29.28,
-          "60+ months": 31.62
-        },
-        vehicle_type_distribution: { "car": 280, "bike": 60, "scooter": 20 },
-        rating_statistics: { "average": 4.72, "min": 1.0, "max": 5.0 },
-        time_patterns: {
-          peak_hours: {
-            morning: { start: "07:00", end: "09:00", demand_multiplier: 1.8 },
-            evening: { start: "17:00", end: "19:00", demand_multiplier: 1.6 },
-            night: { start: "22:00", end: "02:00", demand_multiplier: 1.4 }
-          },
-          low_demand_hours: {
-            midday: { start: "14:00", end: "16:00", demand_multiplier: 0.6 },
-            late_night: { start: "02:00", end: "06:00", demand_multiplier: 0.4 }
-          }
-        },
-        timestamp: new Date().toISOString()
-      });
-    } finally {
-      setLoading(false);
-    }
+    const fetchPlatformStats = async () => {
+      try {
+        const data = await advancedAPI.getPlatformStats();
+        setPlatformStats(data);
+      } catch (error) {
+        console.error('Error fetching platform stats:', error);
+        setPlatformStats({ error: 'Failed to load platform stats' });
+      }
+    };
+
+    const fetchCityComparison = async () => {
+      try {
+        const data = await advancedAPI.getCityComparison();
+        setCityComparison(data);
+      } catch (error) {
+        console.error('Error fetching city comparison:', error);
+        setCityComparison({ error: 'Failed to load city comparison' });
+      }
+    };
+
+    const fetchTimePatterns = async () => {
+      try {
+        const data = await advancedAPI.getTimePatterns();
+        setTimePatterns(data);
+      } catch (error) {
+        console.error('Error fetching time patterns:', error);
+        setTimePatterns({ error: 'Failed to load time patterns' });
+      }
+    };
+
+    // Run all fetches in parallel but independently
+    await Promise.allSettled([
+      fetchStats(),
+      fetchPlatformStats(),
+      fetchCityComparison(),
+      fetchTimePatterns()
+    ]);
+
+    setLoading(false);
   };
 
   const formatCurrency = (amount) => {
@@ -105,6 +114,12 @@ const DashboardPage = () => {
       </div>
     );
   }
+
+  // Safety check to prevent crashes
+  const safeStats = stats || {};
+  const safePlatformStats = platformStats || {};
+  const safeCityComparison = cityComparison || {};
+  const safeTimePatterns = timePatterns || {};
 
   return (
     <div className="space-y-6">
@@ -128,39 +143,45 @@ const DashboardPage = () => {
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
             <Car className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">280</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {safeStats?.error ? 'Error' : (safeStats?.vehicle_type_distribution?.car || 'Loading...')}
+            </div>
             <div className="text-sm text-gray-500">Drivers</div>
             <div className="text-xs text-blue-600 mt-1">Rides Platform</div>
           </div>
 
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <Bike className="w-8 h-8 text-green-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">60</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {safeStats?.error ? 'Error' : (safeStats?.vehicle_type_distribution?.bike || 'Loading...')}
+            </div>
             <div className="text-sm text-gray-500">Couriers</div>
             <div className="text-xs text-green-600 mt-1">Eats Platform</div>
           </div>
 
           <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
             <Briefcase className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">20</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {safeStats?.error ? 'Error' : (safeStats?.vehicle_type_distribution?.scooter || 'Loading...')}
+            </div>
             <div className="text-sm text-gray-500">Job Seekers</div>
             <div className="text-xs text-purple-600 mt-1">Jobs Platform</div>
           </div>
         </div>
 
-        {platformStats && (
+        {safePlatformStats && !safePlatformStats.error && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="font-medium text-gray-900">Platform Breakdown</div>
                 <div className="text-gray-600">
-                  EV Adoption: {platformStats.ev_adoption_rate}%
+                  EV Adoption: {safePlatformStats?.ev_adoption?.percentage || 'Loading...'}%
                 </div>
               </div>
               <div>
                 <div className="font-medium text-gray-900">Vehicle Types</div>
                 <div className="text-gray-600">
-                  Cars: {platformStats.vehicle_types.car || 280}
+                  Cars: {safePlatformStats?.vehicle_distribution?.car || 'Loading...'}
                 </div>
               </div>
             </div>
@@ -266,7 +287,7 @@ const DashboardPage = () => {
           </h2>
           
           <div className="space-y-3">
-            {Object.entries(cityComparison.city_performance || {}).slice(0, 3).map(([cityId, data], index) => (
+            {Object.entries(safeCityComparison.city_performance || {}).slice(0, 3).map(([cityId, data], index) => (
               <motion.div
                 key={cityId}
                 initial={{ opacity: 0, x: -20 }}
@@ -314,10 +335,10 @@ const DashboardPage = () => {
             <div>
               <h3 className="font-medium text-gray-900 mb-2">🚗 Rides Patterns</h3>
               <div className="space-y-2">
-                {timePatterns.ride_patterns && Object.entries(timePatterns.ride_patterns).slice(0, 3).map(([hour, data]) => (
+                {safeTimePatterns.ride_patterns && Object.entries(safeTimePatterns.ride_patterns).slice(0, 3).map(([hour, data]) => (
                   <div key={hour} className="flex justify-between text-sm">
                     <span>{hour}:00</span>
-                    <span className="text-green-600">+{Math.round(data * 100)}%</span>
+                    <span className="text-green-600">€{Math.round(data.net_earnings || 0)}</span>
                   </div>
                 ))}
               </div>
@@ -326,10 +347,10 @@ const DashboardPage = () => {
             <div>
               <h3 className="font-medium text-gray-900 mb-2">🍕 Eats Patterns</h3>
               <div className="space-y-2">
-                {timePatterns.eats_patterns && Object.entries(timePatterns.eats_patterns).slice(0, 3).map(([hour, data]) => (
+                {safeTimePatterns.eats_patterns && Object.entries(safeTimePatterns.eats_patterns).slice(0, 3).map(([hour, data]) => (
                   <div key={hour} className="flex justify-between text-sm">
                     <span>{hour}:00</span>
-                    <span className="text-blue-600">+{Math.round(data * 100)}%</span>
+                    <span className="text-blue-600">€{Math.round(data.net_earnings || 0)}</span>
                   </div>
                 ))}
               </div>
