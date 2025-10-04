@@ -10,7 +10,14 @@ import {
   Star,
   Zap,
   Shield,
-  Target
+  Target,
+  Globe,
+  Bike,
+  Utensils,
+  Briefcase,
+  Navigation,
+  Cloud,
+  Award
 } from 'lucide-react';
 import { chatAPI, earningsAPI, restAPI } from '../services/api';
 

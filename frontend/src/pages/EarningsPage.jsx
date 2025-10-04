@@ -9,16 +9,24 @@ import {
   Target,
   Zap,
   Calculator,
-  Loader2
+  Loader2,
+  Car,
+  Bike,
+  Utensils,
+  Briefcase,
+  BarChart3,
+  Globe
 } from 'lucide-react';
-import { earningsAPI } from '../services/api';
+import { earningsAPI, advancedAPI } from '../services/api';
 
 const EarningsPage = () => {
   const [earnings, setEarnings] = useState(null);
+  const [multiPlatformEarnings, setMultiPlatformEarnings] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState(8);
   const [earnerId] = useState('E10000'); // Demo earner ID
   const [additionalContext, setAdditionalContext] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState('both'); // rides, eats, jobs, both
 
   const timeSlots = [
     { start: '07:00', end: '09:00', label: 'Morning Rush', multiplier: 1.8, color: 'bg-green-500' },
@@ -30,8 +38,14 @@ const EarningsPage = () => {
   const predictEarnings = async () => {
     setLoading(true);
     try {
-      const response = await earningsAPI.predictEarnings(earnerId, hours, additionalContext);
-      setEarnings(response);
+      // Fetch both regular and multi-platform earnings
+      const [regularEarnings, multiPlatformData] = await Promise.all([
+        earningsAPI.predictEarnings(earnerId, hours, additionalContext),
+        advancedAPI.getMultiPlatformEarnings(earnerId, hours, selectedPlatform)
+      ]);
+      
+      setEarnings(regularEarnings);
+      setMultiPlatformEarnings(multiPlatformData);
     } catch (error) {
       console.error('Error predicting earnings:', error);
       // Fallback mock data
@@ -41,6 +55,18 @@ const EarningsPage = () => {
         confidence_score: 0.75,
         ai_insights: "Based on current demand patterns and your profile, you can expect solid earnings today. Focus on peak hours for maximum income.",
         factors: ["Peak hour availability", "Current demand", "Your experience level"],
+        timestamp: new Date().toISOString()
+      });
+      
+      // Mock multi-platform data
+      setMultiPlatformEarnings({
+        total_predicted_earnings: hours * 32.50,
+        platform_breakdown: {
+          rides: { predicted_earnings: hours * 20, percentage: 62 },
+          eats: { predicted_earnings: hours * 8, percentage: 25 },
+          jobs: { predicted_earnings: hours * 4.5, percentage: 14 }
+        },
+        optimization_insights: ["Focus on rides during peak hours", "Eats orders are profitable during lunch/dinner", "Jobs platform offers consistent base income"],
         timestamp: new Date().toISOString()
       });
     } finally {
@@ -168,6 +194,109 @@ const EarningsPage = () => {
           </div>
         </motion.div>
       ) : null}
+
+      {/* Multi-Platform Earnings */}
+      {multiPlatformEarnings && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="card p-6"
+        >
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center justify-center">
+              <Globe className="w-5 h-5 text-uber-600 mr-2" />
+              Multi-Platform Earnings
+            </h2>
+            <div className="text-3xl font-bold text-uber-600 mb-2">
+              {formatCurrency(multiPlatformEarnings.total_predicted_earnings || 0)}
+            </div>
+            <div className="text-sm text-gray-600">
+              Total across all platforms
+            </div>
+          </div>
+
+          {/* Platform Breakdown */}
+          <div className="space-y-4 mb-6">
+            <h3 className="font-semibold text-gray-900">Platform Breakdown</h3>
+            
+            {multiPlatformEarnings.platform_breakdown && Object.entries(multiPlatformEarnings.platform_breakdown).map(([platform, data], index) => (
+              <motion.div
+                key={platform}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  {platform === 'rides' && <Car className="w-5 h-5 text-blue-600" />}
+                  {platform === 'eats' && <Utensils className="w-5 h-5 text-green-600" />}
+                  {platform === 'jobs' && <Briefcase className="w-5 h-5 text-purple-600" />}
+                  <div>
+                    <div className="font-medium text-gray-900 capitalize">{platform}</div>
+                    <div className="text-sm text-gray-500">{data.percentage}% of total</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(data.predicted_earnings)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatCurrency(data.predicted_earnings / hours)}/hr
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Optimization Insights */}
+          <div className="bg-gradient-to-r from-uber-50 to-blue-50 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+              <BarChart3 className="w-4 h-4 text-uber-600 mr-2" />
+              Optimization Insights
+            </h3>
+            <div className="space-y-2">
+              {multiPlatformEarnings.optimization_insights && multiPlatformEarnings.optimization_insights.map((insight, index) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <Target className="w-4 h-4 text-uber-600 mt-0.5 flex-shrink-0" />
+                  <span className="text-sm text-gray-700">{insight}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Platform Selector */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="card p-6"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Platform Focus</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { id: 'both', label: 'All Platforms', icon: Globe, color: 'bg-uber-600' },
+            { id: 'rides', label: 'Rides Only', icon: Car, color: 'bg-blue-600' },
+            { id: 'eats', label: 'Eats Only', icon: Utensils, color: 'bg-green-600' },
+            { id: 'jobs', label: 'Jobs Only', icon: Briefcase, color: 'bg-purple-600' }
+          ].map((platform) => (
+            <button
+              key={platform.id}
+              onClick={() => setSelectedPlatform(platform.id)}
+              className={`p-3 rounded-lg border-2 transition-all ${
+                selectedPlatform === platform.id
+                  ? `${platform.color} text-white border-transparent`
+                  : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <platform.icon className="w-5 h-5 mx-auto mb-2" />
+              <div className="text-sm font-medium">{platform.label}</div>
+            </button>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Peak Hours Guide */}
       <motion.div

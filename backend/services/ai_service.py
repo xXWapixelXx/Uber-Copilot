@@ -4,6 +4,22 @@ import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
+import numpy as np
+from dotenv import load_dotenv
+
+# Load environment variables from parent directory
+load_dotenv(dotenv_path="../.env")
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
 
 try:
     from mistralai import Mistral, UserMessage, AssistantMessage
@@ -24,7 +40,7 @@ class AIService:
     def __init__(self):
         self.api_key = os.getenv("MISTRAL_API_KEY")
         self.model = os.getenv("MISTRAL_MODEL", "mistral-large-latest")
-        self.max_tokens = int(os.getenv("MISTRAL_MAX_TOKENS", "1000"))
+        self.max_tokens = int(os.getenv("MISTRAL_MAX_TOKENS", "500"))
         self.temperature = float(os.getenv("MISTRAL_TEMPERATURE", "0.7"))
         
         self.client = None
@@ -149,25 +165,25 @@ You are an advanced AI assistant for Uber drivers and couriers, helping them max
 
 COMPREHENSIVE DATA CONTEXT:
 - Total earners: {context.get('total_earners', 'N/A')}
-- Platform breakdown: {json.dumps(context.get('platform_breakdown', {}), indent=2)}
+- Platform breakdown: {json.dumps(context.get('platform_breakdown', {}), indent=2, cls=NumpyEncoder)}
 - Average rating: {context.get('avg_rating', 'N/A')}
 - Average experience: {context.get('avg_experience_months', 'N/A')} months
 - Cities available: {context.get('cities', 'N/A')}
 - EV adoption: {context.get('ev_percentage', 'N/A')}%
 
 MULTI-PLATFORM EARNINGS INSIGHTS:
-- City earnings: {json.dumps(context.get('earnings_by_city', {}), indent=2)}
-- Experience earnings: {json.dumps(context.get('earnings_by_experience', {}), indent=2)}
+- City earnings: {json.dumps(context.get('earnings_by_city', {}), indent=2, cls=NumpyEncoder)}
+- Experience earnings: {json.dumps(context.get('earnings_by_experience', {}), indent=2, cls=NumpyEncoder)}
 
 ENHANCED TIME PATTERNS:
-- Peak hours: {json.dumps(context.get('peak_hours', {}), indent=2)}
-- Low demand hours: {json.dumps(context.get('low_demand_hours', {}), indent=2)}
-- Recommended break times: {json.dumps(context.get('recommended_break_times', []), indent=2)}
-- Ride patterns by hour: {json.dumps(context.get('enhanced_time_patterns', {}).get('ride_patterns', {}), indent=2)}
-- Eats patterns by hour: {json.dumps(context.get('enhanced_time_patterns', {}).get('eats_patterns', {}), indent=2)}
+- Peak hours: {json.dumps(context.get('peak_hours', {}), indent=2, cls=NumpyEncoder)}
+- Low demand hours: {json.dumps(context.get('low_demand_hours', {}), indent=2, cls=NumpyEncoder)}
+- Recommended break times: {json.dumps(context.get('recommended_break_times', []), indent=2, cls=NumpyEncoder)}
+- Ride patterns by hour: {json.dumps(context.get('enhanced_time_patterns', {}).get('ride_patterns', {}), indent=2, cls=NumpyEncoder)}
+- Eats patterns by hour: {json.dumps(context.get('enhanced_time_patterns', {}).get('eats_patterns', {}), indent=2, cls=NumpyEncoder)}
 
 CITY INTELLIGENCE:
-- Multi-city performance: {json.dumps(context.get('city_intelligence', {}), indent=2)}
+- Multi-city performance: {json.dumps(context.get('city_intelligence', {}), indent=2, cls=NumpyEncoder)}
 """
         
         if earner_id and 'current_earner' in context:
@@ -221,10 +237,10 @@ ADVANCED RECOMMENDATIONS:
 {', '.join(earner_context.get('advanced_recommendations', []))}
 
 OPTIMIZATION OPPORTUNITIES:
-{json.dumps(earner_context.get('optimization_opportunities', []), indent=2)}
+{json.dumps(earner_context.get('optimization_opportunities', []), indent=2, cls=NumpyEncoder)}
 
 LOCATION INSIGHTS:
-{json.dumps(earner_context.get('location_insights', {}), indent=2)}
+{json.dumps(earner_context.get('location_insights', {}), indent=2, cls=NumpyEncoder)}
 """
         
         templates = {
