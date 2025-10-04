@@ -38,11 +38,9 @@ class AnalyticsService:
             earners_data = enhanced_data_service.get_earners()
             
             if all_earnings_data.empty or earners_data.empty:
-                # Fallback to mock calculation if data not available
-                df = self.data_service.get_dataframe()
-                base_rate = 12.0
-                df['mock_earnings'] = base_rate + (df['experience_months'] * 0.05) + (df['rating'] * 1.5)
-                return df.groupby('home_city_id')['mock_earnings'].mean().to_dict()
+                # Return empty dict if no real data available
+                print("Warning: No earnings data available from Excel sheets")
+                return {}
             
             # Calculate actual city earnings from real data
             # Join earnings with earner data to get city information
@@ -52,50 +50,57 @@ class AnalyticsService:
             return city_earnings
         except Exception as e:
             print(f"Error getting city earnings from real data: {e}")
-            # Fallback to mock calculation
-            df = self.data_service.get_dataframe()
-            base_rate = 12.0
-            df['mock_earnings'] = base_rate + (df['experience_months'] * 0.05) + (df['rating'] * 1.5)
-            return df.groupby('home_city_id')['mock_earnings'].mean().to_dict()
+            # Return empty dict if no real data available
+            return {}
     
     def get_earnings_by_experience(self) -> Dict[str, float]:
-        """Calculate average earnings by experience level"""
-        df = self.data_service.get_dataframe()
+        """Calculate average earnings by experience level using real data from Excel sheets"""
+        from services.enhanced_data_service import enhanced_data_service
         
-        # Create experience categories
-        df['experience_category'] = pd.cut(
-            df['experience_months'],
-            bins=[0, 12, 24, 36, 60, float('inf')],
-            labels=['0-12 months', '12-24 months', '24-36 months', '36-60 months', '60+ months']
-        )
-        
-        # Mock earnings calculation
-        base_rate = 15.0
-        df['mock_earnings'] = base_rate + (df['experience_months'] * 0.1) + (df['rating'] * 2.0)
-        
-        experience_earnings = df.groupby('experience_category', observed=True)['mock_earnings'].mean().to_dict()
-        return experience_earnings
+        try:
+            # Get all earnings data
+            all_earnings_data = enhanced_data_service.data['earnings_daily']
+            earners_data = enhanced_data_service.get_earners()
+            
+            if all_earnings_data.empty or earners_data.empty:
+                print("Warning: No earnings data available for experience analysis")
+                return {}
+            
+            # Join earnings with earner data to get experience information
+            merged = all_earnings_data.merge(earners_data, left_on='earner_id', right_on='earner_id', how='inner')
+            
+            # Create experience categories
+            merged['experience_category'] = pd.cut(
+                merged['experience_months'],
+                bins=[0, 12, 24, 36, 60, float('inf')],
+                labels=['0-12 months', '12-24 months', '24-36 months', '36-60 months', '60+ months']
+            )
+            
+            # Calculate actual earnings by experience category
+            experience_earnings = merged.groupby('experience_category', observed=True)['total_net_earnings'].mean().to_dict()
+            return experience_earnings
+            
+        except Exception as e:
+            print(f"Error getting experience earnings from real data: {e}")
+            return {}
     
     def get_time_patterns(self) -> Dict[str, Any]:
-        """Analyze time-based patterns (mock data for demonstration)"""
-        # Mock time pattern analysis
-        time_patterns = {
-            "peak_hours": {
-                "morning": {"start": "07:00", "end": "09:00", "demand_multiplier": 1.8},
-                "evening": {"start": "17:00", "end": "19:00", "demand_multiplier": 1.6},
-                "night": {"start": "22:00", "end": "02:00", "demand_multiplier": 1.4}
-            },
-            "low_demand_hours": {
-                "midday": {"start": "14:00", "end": "16:00", "demand_multiplier": 0.6},
-                "late_night": {"start": "02:00", "end": "06:00", "demand_multiplier": 0.4}
-            },
-            "recommended_break_times": [
-                {"start": "14:00", "end": "15:00", "reason": "Low demand period"},
-                {"start": "03:00", "end": "05:00", "reason": "Minimal activity"}
-            ]
-        }
+        """Analyze time-based patterns using real data from Excel sheets"""
+        from services.enhanced_data_service import enhanced_data_service
         
-        return time_patterns
+        try:
+            # Get time patterns from enhanced data service
+            time_patterns = enhanced_data_service.get_time_patterns()
+            
+            if not time_patterns:
+                print("Warning: No time patterns data available from Excel sheets")
+                return {}
+                
+            return time_patterns
+            
+        except Exception as e:
+            print(f"Error getting time patterns from real data: {e}")
+            return {}
     
     def get_earner_insights(self, earner_id: str) -> Dict[str, Any]:
         """Get personalized insights for a specific earner using actual earnings data"""
@@ -115,9 +120,8 @@ class AnalyticsService:
             earner_earnings = pd.DataFrame()  # Empty dataframe
         
         if earner_earnings.empty:
-            # Fallback to mock calculation if no earnings data
-            base_rate = 12.0
-            actual_earnings = base_rate + (earner.experience_months * 0.05) + (earner.rating * 1.5)
+            # Return error if no real earnings data available
+            return {"error": f"No earnings data available for earner {earner_id} from Excel sheets"}
         else:
             # Calculate actual hourly earnings from real data
             total_earnings = earner_earnings['total_net_earnings'].sum()
