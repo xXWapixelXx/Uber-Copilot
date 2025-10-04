@@ -256,7 +256,16 @@ Please provide a detailed earnings prediction and optimization advice. Consider:
 4. Vehicle type considerations
 5. Practical tips for maximizing earnings
 
-Respond in a helpful, conversational tone with specific, actionable advice.
+CRITICAL FORMATTING REQUIREMENTS:
+- Write ONLY in plain text format
+- NEVER use asterisks (*) or double asterisks (**) anywhere in the text
+- NO markdown, hashtags (#), bold text, or emojis
+- NO special characters or symbols
+- Keep response SHORT and CONCISE (maximum 3-4 sentences)
+- Use simple bullet points with dashes (-) only
+- Focus on the most important 2-3 points only
+- Write like a simple text message, not a formatted document
+- Example: Write "Predicted earnings: 140-168 euros" NOT "**Predicted earnings**: €140-168"
 """,
             
             "rest_optimization": f"""
@@ -271,7 +280,16 @@ Please provide rest optimization advice. Consider:
 4. Location suggestions for breaks
 5. Signs of fatigue to watch for
 
-Respond with practical, safety-focused advice.
+CRITICAL FORMATTING REQUIREMENTS:
+- Write ONLY in plain text format
+- NEVER use asterisks (*) or double asterisks (**) anywhere in the text
+- NO markdown, hashtags (#), bold text, or emojis
+- NO special characters or symbols
+- Keep response SHORT and CONCISE (maximum 3-4 sentences)
+- Use simple bullet points with dashes (-) only
+- Focus on the most important 2-3 points only
+- Write like a simple text message, not a formatted document
+- Example: Write "Predicted earnings: 140-168 euros" NOT "**Predicted earnings**: €140-168"
 """,
             
             "general_chat": f"""
@@ -279,14 +297,18 @@ Respond with practical, safety-focused advice.
 
 User Question: {user_message}
 
-Please provide helpful advice for Uber drivers/couriers. Consider:
-1. Practical tips based on the data insights
-2. Safety recommendations
-3. Work-life balance advice
-4. Career development suggestions
-5. Platform optimization tips
+Provide concise, actionable advice. Focus on the top 2-3 most important points only.
 
-Respond in a friendly, supportive tone with actionable insights.
+CRITICAL FORMATTING REQUIREMENTS:
+- Write ONLY in plain text format
+- NEVER use asterisks (*) or double asterisks (**) anywhere in the text
+- NO markdown, hashtags (#), bold text, or emojis
+- NO special characters or symbols
+- Keep response SHORT and CONCISE (maximum 3-4 sentences)
+- Use simple bullet points with dashes (-) only
+- Focus on the most important 2-3 points only
+- Write like a simple text message, not a formatted document
+- Example: Write "Predicted earnings: 140-168 euros" NOT "**Predicted earnings**: €140-168"
 """,
             
             "default": f"""
@@ -294,7 +316,7 @@ Respond in a friendly, supportive tone with actionable insights.
 
 User Question: {user_message}
 
-Please provide helpful advice for this Uber driver/courier question. Use the data context to give informed, practical recommendations.
+Please provide helpful advice for this Uber driver/courier question. Use the data context to give informed, practical recommendations. Format your response in a clean, professional style without excessive markdown formatting, asterisks, hashtags, or emojis.
 """
         }
         
@@ -376,11 +398,11 @@ Please provide helpful advice for this Uber driver/courier question. Use the dat
             "earnings_prediction": """
 Based on our data analysis, here are some general tips for maximizing earnings:
 
-1. **Peak Hours**: Work during morning (7-9 AM) and evening (5-7 PM) rush hours
-2. **City Selection**: Choose cities with higher average earnings
-3. **Experience Matters**: More experienced drivers tend to earn more
-4. **Maintain High Rating**: Keep your rating above 4.5 for better opportunities
-5. **Vehicle Efficiency**: Consider fuel-efficient or electric vehicles
+1. Peak Hours: Work during morning (7-9 AM) and evening (5-7 PM) rush hours
+2. City Selection: Choose cities with higher average earnings
+3. Experience Matters: More experienced drivers tend to earn more
+4. Maintain High Rating: Keep your rating above 4.5 for better opportunities
+5. Vehicle Efficiency: Consider fuel-efficient or electric vehicles
 
 For personalized predictions, please ensure the AI service is properly configured.
 """,
@@ -388,11 +410,11 @@ For personalized predictions, please ensure the AI service is properly configure
             "rest_optimization": """
 Here are some rest optimization tips:
 
-1. **Low Demand Times**: Take breaks during 2-4 PM and 2-6 AM
-2. **Duration**: 15-30 minute breaks are optimal
-3. **Location**: Rest near high-demand areas for quick return
-4. **Signs to Watch**: Fatigue, decreased alertness, irritability
-5. **Safety First**: Never drive when tired
+1. Low Demand Times: Take breaks during 2-4 PM and 2-6 AM
+2. Duration: 15-30 minute breaks are optimal
+3. Location: Rest near high-demand areas for quick return
+4. Signs to Watch: Fatigue, decreased alertness, irritability
+5. Safety First: Never drive when tired
 
 For detailed recommendations, please ensure the AI service is properly configured.
 """,

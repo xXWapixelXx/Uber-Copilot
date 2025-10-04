@@ -29,19 +29,34 @@ class AnalyticsService:
         return stats
     
     def get_earnings_by_city(self) -> Dict[int, float]:
-        """Calculate average earnings by city (mock calculation based on experience and rating)"""
-        df = self.data_service.get_dataframe()
+        """Calculate average earnings by city using actual data from earnings_daily sheet"""
+        from services.enhanced_data_service import enhanced_data_service
         
-        # Mock earnings calculation: base rate + experience bonus + rating bonus
-        base_rate = 15.0  # Base hourly rate
-        df['mock_earnings'] = (
-            base_rate + 
-            (df['experience_months'] * 0.1) +  # Experience bonus
-            (df['rating'] * 2.0)  # Rating bonus
-        )
-        
-        city_earnings = df.groupby('home_city_id')['mock_earnings'].mean().to_dict()
-        return city_earnings
+        try:
+            # Get all earnings data (not filtered by earner_id)
+            all_earnings_data = enhanced_data_service.data['earnings_daily']
+            earners_data = enhanced_data_service.get_earners()
+            
+            if all_earnings_data.empty or earners_data.empty:
+                # Fallback to mock calculation if data not available
+                df = self.data_service.get_dataframe()
+                base_rate = 12.0
+                df['mock_earnings'] = base_rate + (df['experience_months'] * 0.05) + (df['rating'] * 1.5)
+                return df.groupby('home_city_id')['mock_earnings'].mean().to_dict()
+            
+            # Calculate actual city earnings from real data
+            # Join earnings with earner data to get city information
+            merged = all_earnings_data.merge(earners_data, left_on='earner_id', right_on='earner_id', how='inner')
+            city_earnings = merged.groupby('home_city_id')['total_net_earnings'].mean().to_dict()
+            
+            return city_earnings
+        except Exception as e:
+            print(f"Error getting city earnings from real data: {e}")
+            # Fallback to mock calculation
+            df = self.data_service.get_dataframe()
+            base_rate = 12.0
+            df['mock_earnings'] = base_rate + (df['experience_months'] * 0.05) + (df['rating'] * 1.5)
+            return df.groupby('home_city_id')['mock_earnings'].mean().to_dict()
     
     def get_earnings_by_experience(self) -> Dict[str, float]:
         """Calculate average earnings by experience level"""
@@ -83,27 +98,44 @@ class AnalyticsService:
         return time_patterns
     
     def get_earner_insights(self, earner_id: str) -> Dict[str, Any]:
-        """Get personalized insights for a specific earner"""
+        """Get personalized insights for a specific earner using actual earnings data"""
+        from services.enhanced_data_service import enhanced_data_service
+        
         earners = self.data_service.get_all_earners()
         earner = next((e for e in earners if e.earner_id == earner_id), None)
         
         if not earner:
             return {"error": "Earner not found"}
         
-        # Calculate mock earnings for this earner
-        base_rate = 15.0
-        mock_earnings = base_rate + (earner.experience_months * 0.1) + (earner.rating * 2.0)
+        # Get actual earnings data for this earner
+        try:
+            earner_earnings = enhanced_data_service.get_earnings_daily(earner_id)
+        except Exception as e:
+            print(f"Error getting earnings for earner {earner_id}: {e}")
+            earner_earnings = pd.DataFrame()  # Empty dataframe
+        
+        if earner_earnings.empty:
+            # Fallback to mock calculation if no earnings data
+            base_rate = 12.0
+            actual_earnings = base_rate + (earner.experience_months * 0.05) + (earner.rating * 1.5)
+        else:
+            # Calculate actual hourly earnings from real data
+            total_earnings = earner_earnings['total_net_earnings'].sum()
+            total_days = len(earner_earnings)
+            avg_daily_earnings = total_earnings / total_days if total_days > 0 else 0
+            # Assuming 8 hours per day average
+            actual_earnings = avg_daily_earnings / 8 if avg_daily_earnings > 0 else 12.0
         
         # Get city average for comparison
         city_earnings = self.get_earnings_by_city()
-        city_avg = city_earnings.get(earner.home_city_id, mock_earnings)
+        city_avg = city_earnings.get(earner.home_city_id, actual_earnings)
         
         insights = {
             "earner_id": earner_id,
-            "predicted_hourly_earnings": round(mock_earnings, 2),
+            "predicted_hourly_earnings": round(actual_earnings, 2),
             "city_average_earnings": round(city_avg, 2),
-            "performance_vs_city": round(((mock_earnings - city_avg) / city_avg) * 100, 1),
-            "recommendations": self._generate_recommendations(earner, mock_earnings, city_avg)
+            "performance_vs_city": round(((actual_earnings - city_avg) / city_avg) * 100, 1),
+            "recommendations": self._generate_recommendations(earner, actual_earnings, city_avg)
         }
         
         return insights
@@ -144,12 +176,28 @@ class AnalyticsService:
         hourly_rate = insights["predicted_hourly_earnings"]
         total_earnings = hourly_rate * hours
         
-        # Calculate confidence based on data quality
-        confidence = min(0.9, max(0.5, insights["performance_vs_city"] / 100 + 0.5))
+        # Get earner earnings data to check if we have real data
+        from services.enhanced_data_service import enhanced_data_service
+        try:
+            earner_earnings = enhanced_data_service.get_earnings_daily(earner_id)
+        except:
+            earner_earnings = pd.DataFrame()
+        
+        # Calculate confidence based on data quality and availability
+        if not earner_earnings.empty:
+            # High confidence for earners with actual data
+            confidence = min(0.95, max(0.8, insights["performance_vs_city"] / 100 + 0.7))
+        else:
+            # Lower confidence for mock calculations
+            confidence = min(0.75, max(0.5, insights["performance_vs_city"] / 100 + 0.5))
+        
+        # Get earner data for factors
+        earners = self.data_service.get_all_earners()
+        earner = next((e for e in earners if e.earner_id == earner_id), None)
         
         factors = [
-            f"Experience: {insights['earner_id']} months",
-            f"Rating: {insights['earner_id']}",
+            f"Experience: {earner.experience_months if earner else 'N/A'} months",
+            f"Rating: {earner.rating if earner else 'N/A'}",
             f"City performance: {insights['performance_vs_city']}% vs average"
         ]
         

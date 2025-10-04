@@ -38,11 +38,11 @@ class EnhancedDataService:
                 df = self._clean_dataframe(df, sheet_name)
                 self.data[sheet_name] = df
                 
-            print(f"✅ Successfully loaded {len(self.data)} datasets")
+            print(f"Successfully loaded {len(self.data)} datasets")
             self._validate_relationships()
             
         except Exception as e:
-            print(f"❌ Error loading data: {e}")
+            print(f"Error loading data: {e}")
             raise
     
     def _clean_dataframe(self, df: pd.DataFrame, sheet_name: str) -> pd.DataFrame:
@@ -86,7 +86,7 @@ class EnhancedDataService:
     
     def _validate_relationships(self):
         """Validate data relationships and integrity"""
-        print("🔍 Validating data relationships...")
+        print("Validating data relationships...")
         
         # Check earner relationships
         earners = self.data['earners']
@@ -103,9 +103,9 @@ class EnhancedDataService:
         couriers = earners[earners['earner_type'] == 'courier']
         missing_couriers = eats_orders[~eats_orders['courier_id'].isin(couriers['earner_id'])]
         if not missing_couriers.empty:
-            print(f"⚠️ Warning: {len(missing_couriers)} orders reference unknown couriers")
+            print(f"Warning: {len(missing_couriers)} orders reference unknown couriers")
         
-        print("✅ Data validation completed")
+        print("Data validation completed")
     
     # Data Access Methods
     
