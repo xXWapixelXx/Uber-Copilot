@@ -203,7 +203,8 @@ Please provide helpful advice for this Uber driver/courier question. Use the dat
         if not self.client:
             return {
                 "error": "Mistral AI client not available. Please check API key and installation.",
-                "fallback_response": self._get_fallback_response(message, use_case)
+                "fallback_response": self._get_fallback_response(message, use_case),
+                "timestamp": datetime.now().isoformat()
             }
         
         try:

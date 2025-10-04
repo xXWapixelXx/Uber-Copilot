@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
+from datetime import datetime
 from services.ai_service import ai_service
 from services.analytics_service import analytics_service
 from services.data_service import data_service
@@ -74,7 +75,7 @@ async def chat_with_ai(request: ChatRequest):
         return ChatResponse(
             response=result.get("response") or result.get("fallback_response", "I'm here to help!"),
             earner_insights=earner_insights if earner_insights and "error" not in earner_insights else None,
-            timestamp=result["timestamp"],
+            timestamp=result.get("timestamp", datetime.now().isoformat()),
             context_used=result.get("context_used", False)
         )
         
