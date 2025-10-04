@@ -9,7 +9,9 @@ import {
   Car,
   DollarSign,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import { chatAPI } from '../services/api';
 
@@ -25,6 +27,9 @@ const ChatPage = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [earnerId, setEarnerId] = useState('E10000'); // Demo earner ID
+  const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [recognition, setRecognition] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -34,6 +39,52 @@ const ChatPage = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages.length]); // Only scroll when messages are added, not on every keystroke
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      setVoiceSupported(true);
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+
+      recognitionInstance.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognitionInstance.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript) {
+          setInputMessage(finalTranscript);
+        }
+      };
+
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognitionInstance.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(recognitionInstance);
+
+      return () => {
+        if (recognitionInstance) {
+          recognitionInstance.stop();
+        }
+      };
+    }
+  }, []);
 
   const quickQuestions = [
     "Should I focus on rides or eats today?",
@@ -90,6 +141,17 @@ const ChatPage = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const toggleVoiceInput = () => {
+    if (!recognition) return;
+
+    if (isListening) {
+      recognition.stop();
+    } else {
+      setInputMessage('');
+      recognition.start();
     }
   };
 
@@ -239,16 +301,46 @@ const ChatPage = () => {
       {/* Input */}
       <div className="sticky bottom-0 bg-white pt-4">
         <div className="flex items-end space-x-2">
+          {/* Voice Input Button */}
+          {voiceSupported && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleVoiceInput}
+              disabled={isLoading}
+              className={`p-3 rounded-2xl transition-all ${
+                isListening
+                  ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+              title={isListening ? 'Stop listening' : 'Start voice input'}
+            >
+              {isListening ? (
+                <MicOff className="w-5 h-5" />
+              ) : (
+                <Mic className="w-5 h-5" />
+              )}
+            </motion.button>
+          )}
+          
           <div className="flex-1 relative">
             <textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about driving, earnings, or rest..."
+              placeholder={isListening ? "Listening..." : "Ask me anything about driving, earnings, or rest..."}
               className="w-full px-4 py-3 border border-gray-300 rounded-2xl resize-none focus:ring-2 focus:ring-uber-500 focus:border-transparent"
               rows="1"
               style={{ minHeight: '48px', maxHeight: '120px' }}
+              disabled={isListening}
             />
+            {isListening && (
+              <div className="absolute right-3 top-3">
+                <span className="flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+              </div>
+            )}
           </div>
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -265,7 +357,7 @@ const ChatPage = () => {
         </div>
         
         <p className="text-xs text-gray-400 mt-2 text-center">
-          Press Enter to send • Shift+Enter for new line
+          {voiceSupported && '🎤 Click mic to speak • '}Press Enter to send • Shift+Enter for new line
         </p>
       </div>
     </div>

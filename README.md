@@ -49,6 +49,12 @@ An interactive chat assistant where drivers can ask:
 
 AI responds with personalized insights powered by the predictive model.
 
+**NEW: 🎤 Voice Input Support**
+- Hands-free interaction using speech-to-text
+- Perfect for drivers on the road
+- Browser-based, no extra costs
+- Works on mobile and desktop
+
 ---
 
 ### 🔹 4. Dashboard (Optional)
@@ -63,11 +69,12 @@ A simple visualization showing:
 
 | Layer | Tools |
 |-------|-------|
-| **Frontend** | Streamlit / React |
+| **Frontend** | React, Material-UI, Framer Motion |
 | **Backend** | Python (Flask / FastAPI) |
 | **ML & Analytics** | pandas, scikit-learn, numpy |
 | **Chat AI** | OpenAI API / rule-based NLP |
-| **Visualization** | Plotly / Streamlit charts |
+| **Voice Input** | Web Speech API (Browser-based) |
+| **Visualization** | Plotly / Recharts |
 | **Data Source** | Mock Uber earner dataset (Excel, ~600 rows) |
 
 ---
