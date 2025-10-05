@@ -99,9 +99,9 @@ class AIService:
                 "ev_percentage": round(stats["ev_percentage"], 1),
                 "earnings_by_city": {str(k): round(v, 2) for k, v in city_earnings.items()},
                 "earnings_by_experience": experience_earnings,
-                "peak_hours": time_patterns["peak_hours"],
-                "low_demand_hours": time_patterns["low_demand_hours"],
-                "recommended_break_times": time_patterns["recommended_break_times"],
+                "peak_hours": time_patterns.get("peak_hours", {}),
+                "low_demand_hours": time_patterns.get("low_demand_hours", {}),
+                "recommended_break_times": time_patterns.get("recommended_break_times", []),
                 
                 # Enhanced multi-platform data
                 "platform_breakdown": {

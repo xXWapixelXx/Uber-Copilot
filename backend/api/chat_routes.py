@@ -31,6 +31,8 @@ class EarningsPredictResponse(BaseModel):
     ai_insights: str = Field(..., description="AI-generated insights and recommendations")
     factors: List[str] = Field(..., description="Key factors influencing the prediction")
     timestamp: str = Field(..., description="Prediction timestamp")
+    competitive_intelligence: Optional[Dict[str, Any]] = Field(None, description="Competitive analysis data")
+    market_demand: Optional[Dict[str, Any]] = Field(None, description="Market demand indicators")
 
 class RestOptimizeResponse(BaseModel):
     current_time: str = Field(..., description="Current time used for optimization")
@@ -96,25 +98,63 @@ async def predict_earnings(request: EarningsPredictRequest):
             additional_context=request.additional_context
         )
         
-        # Get analytical prediction as backup
-        analytical_prediction = analytics_service.predict_earnings(request.earner_id, request.hours)
+        # Get comprehensive earner insights with competitive intelligence
+        earner_insights = analytics_service.get_earner_insights(request.earner_id)
         
-        # Calculate final prediction (average of AI and analytical)
+        if "error" in earner_insights:
+            # Fallback to basic prediction
+            analytical_prediction = analytics_service.predict_earnings(request.earner_id, request.hours)
+            hourly_rate = analytical_prediction.predicted_earnings_per_hour
+            total_earnings = hourly_rate * request.hours
+            confidence = analytical_prediction.confidence_score
+            factors = analytical_prediction.factors
+            competitive_intelligence = {}
+            market_demand = {}
+        else:
+            # Use comprehensive insights
+            hourly_rate = earner_insights["predicted_hourly_earnings"]
+            total_earnings = hourly_rate * request.hours
+            confidence = 0.8  # High confidence for real data
+            # Get earner data for proper factors
+            from services.enhanced_data_service import enhanced_data_service
+            earners_df = enhanced_data_service.get_earners()
+            user_earner = earners_df[earners_df['earner_id'] == request.earner_id]
+            
+            if not user_earner.empty:
+                user_data = user_earner.iloc[0]
+                experience_months = int(user_data['experience_months'])
+                rating = float(user_data['rating'])
+            else:
+                experience_months = 0
+                rating = 0.0
+            
+            factors = [
+                f"Experience: {experience_months} months",
+                f"Rating: {rating}",
+                f"City performance: {earner_insights['performance_vs_city']}% vs average"
+            ]
+            competitive_intelligence = earner_insights.get("competitive_intelligence", {})
+            market_demand = earner_insights.get("market_demand", {})
+        
+        # Calculate final prediction
         ai_response = ai_result.get("response") or ai_result.get("fallback_response", "")
         
-        # Extract hourly rate from analytical prediction
-        hourly_rate = analytical_prediction.predicted_earnings_per_hour
-        total_earnings = hourly_rate * request.hours
-        confidence = analytical_prediction.confidence_score
+        response_data = {
+            "predicted_earnings": round(total_earnings, 2),
+            "hourly_rate": round(hourly_rate, 2),
+            "confidence_score": round(confidence, 2),
+            "ai_insights": ai_response,
+            "factors": factors,
+            "timestamp": ai_result["timestamp"]
+        }
         
-        return EarningsPredictResponse(
-            predicted_earnings=round(total_earnings, 2),
-            hourly_rate=round(hourly_rate, 2),
-            confidence_score=round(confidence, 2),
-            ai_insights=ai_response,
-            factors=analytical_prediction.factors,
-            timestamp=ai_result["timestamp"]
-        )
+        # Add competitive intelligence if available
+        if competitive_intelligence:
+            response_data["competitive_intelligence"] = competitive_intelligence
+        if market_demand:
+            response_data["market_demand"] = market_demand
+        
+        return EarningsPredictResponse(**response_data)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Earnings prediction error: {str(e)}")

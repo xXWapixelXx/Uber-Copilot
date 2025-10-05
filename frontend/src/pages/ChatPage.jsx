@@ -20,7 +20,7 @@ const ChatPage = () => {
     {
       id: 1,
       type: 'bot',
-      content: "🚀 Hey! I'm your advanced AI Copilot with multi-platform intelligence! I can help you with:\n\n• Multi-platform earnings (rides + eats + jobs)\n• Location intelligence with hexagon precision\n• Weather-aware recommendations\n• Incentive optimization\n• City comparison insights\n\nWhat would you like to explore?",
+      content: "🚀 Hey! I'm your personal AI Copilot! I know your profile and can help you with:\n\n• Your personalized earnings predictions\n• Best times and locations for you\n• Weather-aware recommendations for your area\n• Multi-platform optimization (rides + eats)\n• City-specific insights for your home base\n\nWhat would you like to know about maximizing your earnings today?",
       timestamp: new Date()
     }
   ]);
@@ -87,11 +87,11 @@ const ChatPage = () => {
   }, []);
 
   const quickQuestions = [
-    "Should I focus on rides or eats today?",
-    "What's the best hexagon area right now?",
-    "How can I complete this week's quest?",
-    "Will rain affect my earnings today?",
-    "Show me multi-platform earnings prediction"
+    "What should I focus on today - rides or eats?",
+    "What's my best earning strategy for this week?",
+    "When are the peak hours in my city?",
+    "How can I optimize my current location?",
+    "Show me my personalized earnings forecast"
   ];
 
   const handleSendMessage = useCallback(async (message = inputMessage) => {
@@ -228,20 +228,20 @@ const ChatPage = () => {
   }, []);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-screen flex flex-col relative">
       {/* Header */}
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
-          <Bot className="w-6 h-6 text-white" />
+      <div className="flex items-center space-x-2 px-3 py-2 flex-shrink-0 border-b border-gray-100">
+        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+          <Bot className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">AI Copilot</h1>
-          <p className="text-sm text-gray-500">Your personal driving assistant</p>
+          <h1 className="text-base font-semibold text-gray-900">AI Copilot</h1>
+          <p className="text-xs text-gray-500 hidden sm:block">Your personal driving assistant</p>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pb-4 min-h-0">
+      <div className="flex-1 overflow-y-auto px-3 py-2 pb-16">
         <AnimatePresence>
           {useMemo(() => 
             messages.map((message) => (
@@ -299,7 +299,7 @@ const ChatPage = () => {
       )}
 
       {/* Input */}
-      <div className="sticky bottom-0 bg-white pt-4">
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-3 py-2 z-50">
         <div className="flex items-end space-x-2">
           {/* Voice Input Button */}
           {voiceSupported && (
@@ -307,7 +307,7 @@ const ChatPage = () => {
               whileTap={{ scale: 0.95 }}
               onClick={toggleVoiceInput}
               disabled={isLoading}
-              className={`p-3 rounded-2xl transition-all ${
+              className={`p-2 rounded-lg transition-all ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -317,7 +317,7 @@ const ChatPage = () => {
               {isListening ? (
                 <MicOff className="w-5 h-5" />
               ) : (
-                <Mic className="w-5 h-5" />
+                <Mic className="w-4 h-4" />
               )}
             </motion.button>
           )}
@@ -327,10 +327,10 @@ const ChatPage = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={isListening ? "Listening..." : "Ask me anything about driving, earnings, or rest..."}
-              className="w-full px-4 py-3 border border-gray-300 rounded-2xl resize-none focus:ring-2 focus:ring-uber-500 focus:border-transparent"
+              placeholder={isListening ? "Listening..." : "Ask me anything..."}
+              className="w-full px-3 py-2 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-uber-500 focus:border-transparent text-sm"
               rows="1"
-              style={{ minHeight: '48px', maxHeight: '120px' }}
+              style={{ minHeight: '40px', maxHeight: '100px' }}
               disabled={isListening}
             />
             {isListening && (
@@ -346,17 +346,17 @@ const ChatPage = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => handleSendMessage()}
             disabled={!inputMessage.trim() || isLoading}
-            className={`p-3 rounded-2xl transition-colors ${
+            className={`p-2 rounded-lg transition-colors ${
               inputMessage.trim() && !isLoading
                 ? 'bg-uber-600 hover:bg-uber-700 text-white'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </motion.button>
         </div>
         
-        <p className="text-xs text-gray-400 mt-2 text-center">
+        <p className="text-xs text-gray-400 mt-1 text-center hidden sm:block">
           {voiceSupported && '🎤 Click mic to speak • '}Press Enter to send • Shift+Enter for new line
         </p>
       </div>

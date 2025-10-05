@@ -22,11 +22,20 @@ import { earningsAPI, advancedAPI } from '../services/api';
 const EarningsPage = () => {
   const [earnings, setEarnings] = useState(null);
   const [multiPlatformEarnings, setMultiPlatformEarnings] = useState(null);
+  const [competitiveData, setCompetitiveData] = useState(null);
+  const [marketDemand, setMarketDemand] = useState(null);
+  const [cityComparison, setCityComparison] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState(8);
-  const [earnerId] = useState('E10000'); // Demo earner ID
-  const [additionalContext, setAdditionalContext] = useState('');
+  const [earnerId] = useState('E10000'); // Your personal profile
   const [selectedPlatform, setSelectedPlatform] = useState('both'); // rides, eats, jobs, both
+
+  // Auto-refresh data when platform selection changes
+  useEffect(() => {
+    if (earnings) { // Only refresh if we already have data
+      predictEarnings();
+    }
+  }, [selectedPlatform]);
 
   const timeSlots = [
     { start: '07:00', end: '09:00', label: 'Morning Rush', multiplier: 1.8, color: 'bg-green-500' },
@@ -38,14 +47,24 @@ const EarningsPage = () => {
   const predictEarnings = async () => {
     setLoading(true);
     try {
-      // Fetch both regular and multi-platform earnings
-      const [regularEarnings, multiPlatformData] = await Promise.all([
-        earningsAPI.predictEarnings(earnerId, hours, additionalContext),
-        advancedAPI.getMultiPlatformEarnings(earnerId, hours, selectedPlatform)
+      // Fetch earnings, competitive data, and city comparison
+      const [regularEarnings, multiPlatformData, cityComparisonData] = await Promise.all([
+        earningsAPI.predictEarnings(earnerId, hours, ''),
+        advancedAPI.getMultiPlatformEarnings(earnerId, hours, selectedPlatform),
+        advancedAPI.getCityComparison()
       ]);
       
       setEarnings(regularEarnings);
       setMultiPlatformEarnings(multiPlatformData);
+      setCityComparison(cityComparisonData);
+      
+      // Extract competitive intelligence and market demand from earnings data
+      if (regularEarnings.competitive_intelligence) {
+        setCompetitiveData(regularEarnings.competitive_intelligence);
+      }
+      if (regularEarnings.market_demand) {
+        setMarketDemand(regularEarnings.market_demand);
+      }
     } catch (error) {
       console.error('Error predicting earnings:', error);
       // Fallback mock data
@@ -91,8 +110,8 @@ const EarningsPage = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">💰 Earnings Predictor</h1>
-        <p className="text-gray-600">AI-powered income forecasting</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">💰 Your Earnings Predictor</h1>
+        <p className="text-gray-600">Personal AI-powered income forecasting</p>
       </div>
 
       {/* Hours Selector */}
@@ -195,6 +214,153 @@ const EarningsPage = () => {
         </motion.div>
       ) : null}
 
+      {/* Competitive Intelligence */}
+      {competitiveData && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="card p-6"
+        >
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-uber-600 mr-2" />
+              Market Intelligence
+            </h2>
+            <p className="text-sm text-gray-600">How you compare to other drivers in your city</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Your Ranking */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">🏆 Your Performance</h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm text-gray-600">City Ranking</span>
+                  <span className="font-semibold text-blue-600">{competitiveData.city_rank}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Experience Level</span>
+                  <span className="font-semibold text-green-600">Top {competitiveData.experience_percentile}%</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                  <span className="text-sm text-gray-600">Rating vs Others</span>
+                  <span className="font-semibold text-purple-600">Top {competitiveData.rating_percentile}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Market Activity */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">📊 Market Activity</h3>
+              
+              <div className="space-y-3">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">Active Drivers</span>
+                    <span className="font-semibold text-gray-900">
+                      {competitiveData.total_earners_in_city - competitiveData.better_performers} of {competitiveData.total_earners_in_city}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-uber-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${competitiveData.ranking_percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+                
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">Performance Score</div>
+                  <div className="text-2xl font-bold text-yellow-600">{competitiveData.ranking_percentage}%</div>
+                  <div className="text-xs text-gray-500">Better than {competitiveData.better_performers} drivers</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Market Demand Indicators */}
+      {marketDemand && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="card p-6"
+        >
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-uber-600 mr-2" />
+              Real-Time Market Status
+            </h2>
+            <p className="text-sm text-gray-600">Current demand and activity in your city</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Demand Level */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">📈 Demand Level</h3>
+              
+              <div className={`text-center p-6 rounded-lg border-2 ${
+                marketDemand.demand_level === 'HIGH' ? 'bg-red-50 border-red-200' :
+                marketDemand.demand_level === 'MEDIUM' ? 'bg-yellow-50 border-yellow-200' :
+                'bg-green-50 border-green-200'
+              }`}>
+                <div className={`text-3xl font-bold mb-2 ${
+                  marketDemand.demand_level === 'HIGH' ? 'text-red-600' :
+                  marketDemand.demand_level === 'MEDIUM' ? 'text-yellow-600' :
+                  'text-green-600'
+                }`}>
+                  {marketDemand.demand_level}
+                </div>
+                <div className="text-sm text-gray-600">{marketDemand.demand_description}</div>
+                <div className="text-lg font-semibold mt-2">{marketDemand.activity_ratio}% Active</div>
+              </div>
+            </div>
+
+            {/* Driver Activity */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-gray-900">🚗 Driver Activity</h3>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Online</span>
+                  </div>
+                  <span className="font-semibold text-green-600">{marketDemand.online_earners}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Engaged</span>
+                  </div>
+                  <span className="font-semibold text-blue-600">{marketDemand.engaged_earners}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Offline</span>
+                  </div>
+                  <span className="font-semibold text-gray-600">{marketDemand.offline_earners}</span>
+                </div>
+              </div>
+              
+              <div className="text-center p-3 bg-uber-50 rounded-lg">
+                <div className="text-sm text-gray-600 mb-1">Total Drivers in City</div>
+                <div className="text-xl font-bold text-uber-600">{marketDemand.total_earners}</div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Multi-Platform Earnings */}
       {multiPlatformEarnings && (
         <motion.div
@@ -220,7 +386,7 @@ const EarningsPage = () => {
           <div className="space-y-4 mb-6">
             <h3 className="font-semibold text-gray-900">Platform Breakdown</h3>
             
-            {multiPlatformEarnings.platform_breakdown && Object.entries(multiPlatformEarnings.platform_breakdown).map(([platform, data], index) => (
+            {multiPlatformEarnings.predictions && Object.entries(multiPlatformEarnings.predictions).map(([platform, data], index) => (
               <motion.div
                 key={platform}
                 initial={{ opacity: 0, x: -20 }}
@@ -234,7 +400,7 @@ const EarningsPage = () => {
                   {platform === 'jobs' && <Briefcase className="w-5 h-5 text-purple-600" />}
                   <div>
                     <div className="font-medium text-gray-900 capitalize">{platform}</div>
-                    <div className="text-sm text-gray-500">{data.percentage}% of total</div>
+                    <div className="text-sm text-gray-500">{formatCurrency(data.hourly_rate)}/hour</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -255,13 +421,25 @@ const EarningsPage = () => {
               <BarChart3 className="w-4 h-4 text-uber-600 mr-2" />
               Optimization Insights
             </h3>
-            <div className="space-y-2">
-              {multiPlatformEarnings.optimization_insights && multiPlatformEarnings.optimization_insights.map((insight, index) => (
-                <div key={index} className="flex items-start space-x-2">
-                  <Target className="w-4 h-4 text-uber-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{insight}</span>
+            <div className="space-y-3">
+              {multiPlatformEarnings.optimal_strategy && (
+                <div className="bg-white rounded-lg p-3 border border-uber-200">
+                  <div className="flex items-start space-x-2">
+                    <Target className="w-4 h-4 text-uber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="font-medium text-gray-900 mb-1">
+                        {multiPlatformEarnings.optimal_strategy.recommendation}
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        {multiPlatformEarnings.optimal_strategy.reasoning}
+                      </div>
+                      <div className="text-sm font-semibold text-uber-600">
+                        Expected Earnings: {formatCurrency(multiPlatformEarnings.optimal_strategy.expected_earnings)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </motion.div>
@@ -333,29 +511,6 @@ const EarningsPage = () => {
         </div>
       </motion.div>
 
-      {/* Additional Context */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="card p-6"
-      >
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">📝 Additional Context</h2>
-        <textarea
-          value={additionalContext}
-          onChange={(e) => setAdditionalContext(e.target.value)}
-          placeholder="Tell me more about your situation (e.g., 'Working in downtown', 'Weekend shift', 'New to the area')..."
-          className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-uber-500 focus:border-transparent"
-          rows="3"
-        />
-        <button
-          onClick={predictEarnings}
-          className="mt-3 w-full btn-primary"
-        >
-          <Calculator className="w-4 h-4 mr-2" />
-          Update Prediction
-        </button>
-      </motion.div>
 
       {/* Tips */}
       <motion.div

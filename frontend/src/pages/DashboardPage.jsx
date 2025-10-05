@@ -125,8 +125,8 @@ const DashboardPage = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">🚀 Advanced Analytics</h1>
-        <p className="text-gray-600">Multi-platform intelligence & insights</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">🚀 Your Analytics Dashboard</h1>
+        <p className="text-gray-600">Personal multi-platform intelligence & insights</p>
       </div>
 
       {/* Multi-Platform Overview */}
@@ -287,7 +287,7 @@ const DashboardPage = () => {
           </h2>
           
           <div className="space-y-3">
-            {Object.entries(safeCityComparison.city_performance || {}).slice(0, 3).map(([cityId, data], index) => (
+            {Object.entries(safeCityComparison.cities || {}).slice(0, 3).map(([cityId, data], index) => (
               <motion.div
                 key={cityId}
                 initial={{ opacity: 0, x: -20 }}
@@ -297,20 +297,20 @@ const DashboardPage = () => {
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-uber-100 rounded-lg flex items-center justify-center">
-                    <span className="text-sm font-semibold text-uber-600">{cityId}</span>
+                    <span className="text-sm font-semibold text-uber-600">{cityId.replace('city_', '')}</span>
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">City {cityId}</div>
+                    <div className="font-medium text-gray-900">City {cityId.replace('city_', '')}</div>
                     <div className="text-sm text-gray-500">
-                      Rides: {data.rides_performance?.total_rides || 0}
+                      {data.earnings_stats?.total_earners || 0} drivers, {data.earnings_stats?.total_rides || 0} rides
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-semibold text-blue-600">
-                    {formatCurrency(data.earnings_performance?.avg_hourly_earnings || 25)}
+                    {formatCurrency(data.earnings_stats?.avg_daily_earnings || 0)}
                   </div>
-                  <div className="text-xs text-gray-500">per hour</div>
+                  <div className="text-xs text-gray-500">avg daily</div>
                 </div>
               </motion.div>
             ))}

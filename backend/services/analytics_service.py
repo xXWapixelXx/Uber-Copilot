@@ -108,10 +108,10 @@ class AnalyticsService:
         
         earners = self.data_service.get_all_earners()
         earner = next((e for e in earners if e.earner_id == earner_id), None)
-        
+
         if not earner:
             return {"error": "Earner not found"}
-        
+
         # Get actual earnings data for this earner
         try:
             earner_earnings = enhanced_data_service.get_earnings_daily(earner_id)
@@ -129,20 +129,130 @@ class AnalyticsService:
             avg_daily_earnings = total_earnings / total_days if total_days > 0 else 0
             # Assuming 8 hours per day average
             actual_earnings = avg_daily_earnings / 8 if avg_daily_earnings > 0 else 12.0
-        
+
         # Get city average for comparison
         city_earnings = self.get_earnings_by_city()
         city_avg = city_earnings.get(earner.home_city_id, actual_earnings)
+
+        # Get competitive intelligence
+        competitive_data = self._get_competitive_intelligence(earner_id, earner.home_city_id)
         
+        # Get market demand indicators
+        demand_data = self._get_market_demand_indicators(earner.home_city_id)
+
         insights = {
             "earner_id": earner_id,
             "predicted_hourly_earnings": round(actual_earnings, 2),
             "city_average_earnings": round(city_avg, 2),
             "performance_vs_city": round(((actual_earnings - city_avg) / city_avg) * 100, 1),
+            "competitive_intelligence": competitive_data,
+            "market_demand": demand_data,
             "recommendations": self._generate_recommendations(earner, actual_earnings, city_avg)
         }
-        
+
         return insights
+    
+    def _get_competitive_intelligence(self, earner_id: str, city_id: int) -> Dict[str, Any]:
+        """Get competitive intelligence comparing user to other earners"""
+        from services.enhanced_data_service import enhanced_data_service
+        
+        try:
+            # Get all earners in the same city
+            earners_df = enhanced_data_service.get_earners()
+            city_earners = earners_df[earners_df['home_city_id'] == city_id]
+            
+            if city_earners.empty:
+                return {}
+            
+            # Get user's current earner data
+            user_earner = city_earners[city_earners['earner_id'] == earner_id]
+            if user_earner.empty:
+                return {}
+            
+            user_data = user_earner.iloc[0]
+            
+            # Calculate percentiles for competitive comparison
+            experience_percentile = (city_earners['experience_months'] < user_data['experience_months']).mean() * 100
+            rating_percentile = (city_earners['rating'] < user_data['rating']).mean() * 100
+            
+            # Get earnings comparison
+            city_earnings = self.get_earnings_by_city()
+            user_city_avg = city_earnings.get(city_id, 0)
+            
+            # Calculate how user ranks vs others
+            better_earners = len([e for e in city_earners.itertuples() 
+                                if e.rating > user_data['rating'] and e.experience_months > user_data['experience_months']])
+            total_earners = len(city_earners)
+            ranking_percentage = (total_earners - better_earners) / total_earners * 100 if total_earners > 0 else 0
+            
+            return {
+                "experience_percentile": round(experience_percentile, 1),
+                "rating_percentile": round(rating_percentile, 1),
+                "ranking_percentage": round(ranking_percentage, 1),
+                "total_earners_in_city": len(city_earners),
+                "better_performers": better_earners,
+                "city_rank": f"#{total_earners - better_earners} of {total_earners}" if better_earners < total_earners else f"Top {ranking_percentage:.0f}%"
+            }
+            
+        except Exception as e:
+            print(f"Error getting competitive intelligence: {e}")
+            return {}
+    
+    def _get_market_demand_indicators(self, city_id: int) -> Dict[str, Any]:
+        """Get market demand indicators for the city"""
+        from services.enhanced_data_service import enhanced_data_service
+        
+        try:
+            # Get earners in the city
+            earners_df = enhanced_data_service.get_earners()
+            city_earners = earners_df[earners_df['home_city_id'] == city_id]
+            
+            if city_earners.empty:
+                return {}
+            
+            # Calculate market activity indicators
+            online_earners = len(city_earners[city_earners['status'] == 'online'])
+            engaged_earners = len(city_earners[city_earners['status'] == 'engaged'])
+            offline_earners = len(city_earners[city_earners['status'] == 'offline'])
+            
+            total_earners = len(city_earners)
+            active_earners = online_earners + engaged_earners
+            
+            # Calculate demand level based on activity
+            activity_ratio = active_earners / total_earners if total_earners > 0 else 0
+            
+            if activity_ratio > 0.7:
+                demand_level = "HIGH"
+                demand_color = "text-red-600"
+                demand_description = "Most drivers are active - high competition"
+            elif activity_ratio > 0.4:
+                demand_level = "MEDIUM"
+                demand_color = "text-yellow-600"
+                demand_description = "Moderate activity - good opportunities"
+            else:
+                demand_level = "LOW"
+                demand_color = "text-green-600"
+                demand_description = "Low activity - great time to work"
+            
+            # Get vehicle type distribution for market insights
+            vehicle_dist = city_earners['vehicle_type'].value_counts().to_dict()
+            
+            return {
+                "demand_level": demand_level,
+                "demand_color": demand_color,
+                "demand_description": demand_description,
+                "active_earners": active_earners,
+                "total_earners": total_earners,
+                "activity_ratio": round(activity_ratio * 100, 1),
+                "online_earners": online_earners,
+                "engaged_earners": engaged_earners,
+                "offline_earners": offline_earners,
+                "vehicle_distribution": vehicle_dist
+            }
+            
+        except Exception as e:
+            print(f"Error getting market demand indicators: {e}")
+            return {}
     
     def _generate_recommendations(self, earner: Earner, earnings: float, city_avg: float) -> List[str]:
         """Generate personalized recommendations for an earner"""
