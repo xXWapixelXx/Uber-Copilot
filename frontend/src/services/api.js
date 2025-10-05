@@ -1,8 +1,17 @@
 import axios from 'axios';
 
 // Create axios instance with base configuration
+// Auto-detect if running on mobile/network access
+const getBaseURL = () => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000/api';
+  }
+  // For network access, use the same hostname but port 8000
+  return `http://${window.location.hostname}:8000/api`;
+};
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: getBaseURL(),
   timeout: 60000, // 60 seconds for comprehensive AI processing
   headers: {
     'Content-Type': 'application/json',

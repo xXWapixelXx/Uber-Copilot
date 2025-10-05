@@ -24,7 +24,9 @@ app.add_middleware(
         "http://localhost:5173",  # Vite dev server
         "http://127.0.0.1:5173",
         "http://localhost:8080",  # Alternative ports
-        "http://127.0.0.1:8080"
+        "http://127.0.0.1:8080",
+        "http://192.168.1.123:5173",  # Your network IP
+        "http://192.168.1.123:8000",  # Backend on network IP
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
