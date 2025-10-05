@@ -11,7 +11,9 @@ import {
   Clock,
   TrendingUp,
   Mic,
-  MicOff
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { chatAPI } from '../services/api';
 
@@ -30,6 +32,8 @@ const ChatPage = () => {
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [recognition, setRecognition] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -39,6 +43,13 @@ const ChatPage = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages.length]); // Only scroll when messages are added, not on every keystroke
+
+  // Cleanup: stop speech when component unmounts
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -123,6 +134,9 @@ const ChatPage = () => {
       };
 
       setMessages(prev => [...prev, botMessage]);
+      
+      // Speak the response if voice output is enabled
+      speakResponse(response.response);
     } catch (error) {
       const errorMessage = {
         id: timestamp + 1, // Ensure unique ID
@@ -153,6 +167,40 @@ const ChatPage = () => {
       setInputMessage('');
       recognition.start();
     }
+  };
+
+  const speakResponse = (text) => {
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    if (!voiceOutputEnabled) return;
+    
+    // Clean the text for better speech (remove emojis and special characters)
+    const cleanText = text.replace(/[📊🚀💡🎯⭐✅❌🔴🎤🗺️📍]/g, '');
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.1; // Slightly faster for efficiency
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleVoiceOutput = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    setVoiceOutputEnabled(!voiceOutputEnabled);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
   };
 
   const MessageBubble = useCallback(({ message }) => {
@@ -322,6 +370,34 @@ const ChatPage = () => {
             </motion.button>
           )}
           
+          {/* Voice Output Button */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleVoiceOutput}
+            className={`p-3 rounded-2xl transition-all ${
+              isSpeaking
+                ? 'bg-blue-500 text-white animate-pulse'
+                : voiceOutputEnabled
+                  ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-400'
+            }`}
+            title={voiceOutputEnabled ? 'Voice output enabled (click to disable)' : 'Voice output disabled (click to enable)'}
+          >
+            {isSpeaking ? (
+              <div className="relative">
+                <Volume2 className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+                </span>
+              </div>
+            ) : voiceOutputEnabled ? (
+              <Volume2 className="w-5 h-5" />
+            ) : (
+              <VolumeX className="w-5 h-5" />
+            )}
+          </motion.button>
+          
           <div className="flex-1 relative">
             <textarea
               value={inputMessage}
@@ -356,8 +432,10 @@ const ChatPage = () => {
           </motion.button>
         </div>
         
-        <p className="text-xs text-gray-400 mt-1 text-center hidden sm:block">
-          {voiceSupported && '🎤 Click mic to speak • '}Press Enter to send • Shift+Enter for new line
+        <p className="text-xs text-gray-400 mt-2 text-center">
+          {voiceSupported && '🎤 Voice input • '}
+          {voiceOutputEnabled ? '🔊 Voice output ON' : '🔇 Voice output OFF'} • 
+          Press Enter to send • Shift+Enter for new line
         </p>
       </div>
     </div>
