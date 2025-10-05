@@ -355,7 +355,7 @@ const ChatPage = () => {
               whileTap={{ scale: 0.95 }}
               onClick={toggleVoiceInput}
               disabled={isLoading}
-              className={`p-2 rounded-lg transition-all ${
+              className={`p-3 rounded-lg transition-all ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
@@ -363,9 +363,9 @@ const ChatPage = () => {
               title={isListening ? 'Stop listening' : 'Start voice input'}
             >
               {isListening ? (
-                <MicOff className="w-5 h-5" />
+                <MicOff className="w-6 h-6" />
               ) : (
-                <Mic className="w-4 h-4" />
+                <Mic className="w-6 h-6" />
               )}
             </motion.button>
           )}
@@ -374,7 +374,7 @@ const ChatPage = () => {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={toggleVoiceOutput}
-            className={`p-3 rounded-2xl transition-all ${
+            className={`p-3 rounded-lg transition-all ${
               isSpeaking
                 ? 'bg-blue-500 text-white animate-pulse'
                 : voiceOutputEnabled
@@ -385,16 +385,16 @@ const ChatPage = () => {
           >
             {isSpeaking ? (
               <div className="relative">
-                <Volume2 className="w-5 h-5" />
+                <Volume2 className="w-6 h-6" />
                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
                 </span>
               </div>
             ) : voiceOutputEnabled ? (
-              <Volume2 className="w-5 h-5" />
+              <Volume2 className="w-6 h-6" />
             ) : (
-              <VolumeX className="w-5 h-5" />
+              <VolumeX className="w-6 h-6" />
             )}
           </motion.button>
           
@@ -422,13 +422,13 @@ const ChatPage = () => {
             whileTap={{ scale: 0.95 }}
             onClick={() => handleSendMessage()}
             disabled={!inputMessage.trim() || isLoading}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-3 rounded-lg transition-colors ${
               inputMessage.trim() && !isLoading
                 ? 'bg-uber-600 hover:bg-uber-700 text-white'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-6 h-6" />
           </motion.button>
         </div>
         
