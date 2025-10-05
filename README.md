@@ -171,4 +171,7 @@ MIT License
 
 ### 💬 Quote
 
+
+We used CLaude and ChatGPT to make this project.
+
 > "Drive smarter, not harder — your AI co-pilot's got your back."
