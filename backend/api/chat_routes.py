@@ -2,9 +2,44 @@ from fastapi import APIRouter, HTTPException, Body
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
+import json
+import numpy as np
 from services.ai_service import ai_service
 from services.analytics_service import analytics_service
 from services.data_service import data_service
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy types"""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+def clean_numpy_types(data):
+    """Recursively convert numpy types to Python native types and convert integer keys to strings"""
+    if isinstance(data, dict):
+        # Convert integer keys to strings for Pydantic compatibility
+        cleaned_dict = {}
+        for key, value in data.items():
+            if isinstance(key, (int, np.integer)):
+                cleaned_dict[str(key)] = clean_numpy_types(value)
+            else:
+                cleaned_dict[key] = clean_numpy_types(value)
+        return cleaned_dict
+    elif isinstance(data, list):
+        return [clean_numpy_types(item) for item in data]
+    elif isinstance(data, np.integer):
+        return int(data)
+    elif isinstance(data, np.floating):
+        return float(data)
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    else:
+        return data
 
 router = APIRouter()
 
@@ -247,6 +282,27 @@ async def get_dashboard_stats():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Dashboard stats error: {str(e)}")
+
+@router.get("/time-patterns/{earner_id}")
+async def get_time_patterns(earner_id: str):
+    """Get real time-based earnings patterns from Excel data"""
+    try:
+        time_data = analytics_service.get_time_based_earnings(earner_id)
+        
+        if "error" in time_data:
+            raise HTTPException(status_code=404, detail=time_data["error"])
+        
+        # Clean numpy types from the response
+        cleaned_data = clean_numpy_types(time_data)
+        
+        return {
+            "status": "success",
+            "data": cleaned_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Time patterns error: {str(e)}")
 
 @router.get("/health")
 async def health_check():

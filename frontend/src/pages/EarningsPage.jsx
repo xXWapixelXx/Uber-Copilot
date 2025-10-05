@@ -17,7 +17,7 @@ import {
   BarChart3,
   Globe
 } from 'lucide-react';
-import { earningsAPI, advancedAPI } from '../services/api';
+import { earningsAPI, advancedAPI, timeAPI } from '../services/api';
 
 const EarningsPage = () => {
   const [earnings, setEarnings] = useState(null);
@@ -25,6 +25,7 @@ const EarningsPage = () => {
   const [competitiveData, setCompetitiveData] = useState(null);
   const [marketDemand, setMarketDemand] = useState(null);
   const [cityComparison, setCityComparison] = useState(null);
+  const [timePatterns, setTimePatterns] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hours, setHours] = useState(8);
   const [earnerId] = useState('E10000'); // Your personal profile
@@ -37,26 +38,23 @@ const EarningsPage = () => {
     }
   }, [selectedPlatform]);
 
-  const timeSlots = [
-    { start: '07:00', end: '09:00', label: 'Morning Rush', multiplier: 1.8, color: 'bg-green-500' },
-    { start: '17:00', end: '19:00', label: 'Evening Rush', multiplier: 1.6, color: 'bg-blue-500' },
-    { start: '22:00', end: '02:00', label: 'Night Shift', multiplier: 1.4, color: 'bg-purple-500' },
-    { start: '14:00', end: '16:00', label: 'Low Demand', multiplier: 0.6, color: 'bg-red-500' },
-  ];
+  // Real time slots will be loaded from API
 
   const predictEarnings = async () => {
     setLoading(true);
     try {
-      // Fetch earnings, competitive data, and city comparison
-      const [regularEarnings, multiPlatformData, cityComparisonData] = await Promise.all([
+      // Fetch earnings, competitive data, city comparison, and time patterns
+      const [regularEarnings, multiPlatformData, cityComparisonData, timePatternsData] = await Promise.all([
         earningsAPI.predictEarnings(earnerId, hours, ''),
         advancedAPI.getMultiPlatformEarnings(earnerId, hours, selectedPlatform),
-        advancedAPI.getCityComparison()
+        advancedAPI.getCityComparison(),
+        timeAPI.getTimePatterns(earnerId)
       ]);
       
       setEarnings(regularEarnings);
       setMultiPlatformEarnings(multiPlatformData);
       setCityComparison(cityComparisonData);
+      setTimePatterns(timePatternsData);
       
       // Extract competitive intelligence and market demand from earnings data
       if (regularEarnings.competitive_intelligence) {
@@ -67,27 +65,12 @@ const EarningsPage = () => {
       }
     } catch (error) {
       console.error('Error predicting earnings:', error);
-      // Fallback mock data
-      setEarnings({
-        predicted_earnings: hours * 25.50,
-        hourly_rate: 25.50,
-        confidence_score: 0.75,
-        ai_insights: "Based on current demand patterns and your profile, you can expect solid earnings today. Focus on peak hours for maximum income.",
-        factors: ["Peak hour availability", "Current demand", "Your experience level"],
-        timestamp: new Date().toISOString()
-      });
-      
-      // Mock multi-platform data
-      setMultiPlatformEarnings({
-        total_predicted_earnings: hours * 32.50,
-        platform_breakdown: {
-          rides: { predicted_earnings: hours * 20, percentage: 62 },
-          eats: { predicted_earnings: hours * 8, percentage: 25 },
-          jobs: { predicted_earnings: hours * 4.5, percentage: 14 }
-        },
-        optimization_insights: ["Focus on rides during peak hours", "Eats orders are profitable during lunch/dinner", "Jobs platform offers consistent base income"],
-        timestamp: new Date().toISOString()
-      });
+      // No fallback data - let the UI handle empty states
+      setEarnings(null);
+      setMultiPlatformEarnings(null);
+      setCompetitiveData(null);
+      setMarketDemand(null);
+      setTimePatterns(null);
     } finally {
       setLoading(false);
     }
@@ -141,7 +124,7 @@ const EarningsPage = () => {
         </div>
         
         <div className="text-sm text-gray-500">
-          {hours === 1 ? '1 hour' : `${hours} hours`} • {formatCurrency(hours * 25)}
+          {hours === 1 ? '1 hour' : `${hours} hours`} • {earnings ? formatCurrency(hours * earnings.hourly_rate) : 'Loading...'}
         </div>
       </motion.div>
 
@@ -483,31 +466,43 @@ const EarningsPage = () => {
         transition={{ delay: 0.4 }}
         className="card p-6"
       >
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">⏰ Peak Hours Guide</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">⏰ Real-Time Earnings Guide</h2>
         <div className="space-y-3">
-          {timeSlots.map((slot, index) => (
-            <motion.div
-              key={slot.label}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
-              <div className="flex items-center space-x-3">
-                <div className={`w-3 h-3 rounded-full ${slot.color}`}></div>
-                <div>
-                  <div className="font-medium text-gray-900">{slot.label}</div>
-                  <div className="text-sm text-gray-500">{slot.start} - {slot.end}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold text-gray-900">
-                  {slot.multiplier > 1 ? '+' : ''}{Math.round((slot.multiplier - 1) * 100)}%
-                </div>
-                <div className="text-xs text-gray-500">demand</div>
-              </div>
-            </motion.div>
-          ))}
+          {timePatterns?.data?.time_slots ? (
+            timePatterns.data.time_slots
+              .filter(slot => slot.avg_earnings_per_trip > 0) // Only show hours with actual earnings
+              .sort((a, b) => b.avg_earnings_per_trip - a.avg_earnings_per_trip) // Sort by earnings
+              .slice(0, 8) // Show top 8 hours
+              .map((slot, index) => (
+                <motion.div
+                  key={`${slot.hour}-${slot.label}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 + index * 0.1 }}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-3 h-3 rounded-full ${slot.color}`}></div>
+                    <div>
+                      <div className="font-medium text-gray-900">{slot.label}</div>
+                      <div className="text-sm text-gray-500">{slot.hour}:00 - {slot.hour + 1}:00</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-gray-900">
+                      €{slot.avg_earnings_per_trip.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {slot.trip_count} trips • {slot.surge_multiplier.toFixed(1)}x surge
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              {loading ? 'Loading time patterns...' : 'No time data available'}
+            </div>
+          )}
         </div>
       </motion.div>
 

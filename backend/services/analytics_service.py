@@ -42,12 +42,21 @@ class AnalyticsService:
                 print("Warning: No earnings data available from Excel sheets")
                 return {}
             
-            # Calculate actual city earnings from real data
+            # Calculate actual city hourly earnings from real working hours
             # Join earnings with earner data to get city information
             merged = all_earnings_data.merge(earners_data, left_on='earner_id', right_on='earner_id', how='inner')
-            city_earnings = merged.groupby('home_city_id')['total_net_earnings'].mean().to_dict()
             
-            return city_earnings
+            # Calculate hourly rates for each city
+            city_hourly_rates = {}
+            for city_id in merged['home_city_id'].unique():
+                city_data = merged[merged['home_city_id'] == city_id]
+                total_earnings = city_data['total_net_earnings'].sum()
+                total_working_mins = (city_data['rides_duration_mins'] + city_data['eats_duration_mins']).sum()
+                total_working_hours = total_working_mins / 60 if total_working_mins > 0 else 1
+                hourly_rate = total_earnings / total_working_hours if total_working_hours > 0 else 15.0
+                city_hourly_rates[city_id] = hourly_rate
+            
+            return city_hourly_rates
         except Exception as e:
             print(f"Error getting city earnings from real data: {e}")
             # Return empty dict if no real data available
@@ -76,8 +85,18 @@ class AnalyticsService:
                 labels=['0-12 months', '12-24 months', '24-36 months', '36-60 months', '60+ months']
             )
             
-            # Calculate actual earnings by experience category
-            experience_earnings = merged.groupby('experience_category', observed=True)['total_net_earnings'].mean().to_dict()
+            # Calculate actual hourly earnings by experience category using real working hours
+            experience_hourly_rates = {}
+            for category in merged['experience_category'].cat.categories:
+                category_data = merged[merged['experience_category'] == category]
+                if not category_data.empty:
+                    total_earnings = category_data['total_net_earnings'].sum()
+                    total_working_mins = (category_data['rides_duration_mins'] + category_data['eats_duration_mins']).sum()
+                    total_working_hours = total_working_mins / 60 if total_working_mins > 0 else 1
+                    hourly_rate = total_earnings / total_working_hours if total_working_hours > 0 else 15.0
+                    experience_hourly_rates[str(category)] = hourly_rate
+            
+            experience_earnings = experience_hourly_rates
             return experience_earnings
             
         except Exception as e:
@@ -123,12 +142,12 @@ class AnalyticsService:
             # Return error if no real earnings data available
             return {"error": f"No earnings data available for earner {earner_id} from Excel sheets"}
         else:
-            # Calculate actual hourly earnings from real data
+            # Calculate actual hourly earnings from real working hours
             total_earnings = earner_earnings['total_net_earnings'].sum()
-            total_days = len(earner_earnings)
-            avg_daily_earnings = total_earnings / total_days if total_days > 0 else 0
-            # Assuming 8 hours per day average
-            actual_earnings = avg_daily_earnings / 8 if avg_daily_earnings > 0 else 12.0
+            total_working_mins = (earner_earnings['rides_duration_mins'] + earner_earnings['eats_duration_mins']).sum()
+            total_working_hours = total_working_mins / 60 if total_working_mins > 0 else 1
+            # Use actual working hours from Excel data
+            actual_earnings = total_earnings / total_working_hours if total_working_hours > 0 else 15.0
 
         # Get city average for comparison
         city_earnings = self.get_earnings_by_city()
@@ -323,6 +342,109 @@ class AnalyticsService:
             factors=factors,
             recommendation=recommendation
         )
+    
+    def get_time_based_earnings(self, earner_id: str) -> Dict[str, Any]:
+        """Get real time-based earnings data from Excel sheets"""
+        from services.enhanced_data_service import enhanced_data_service
+        
+        try:
+            # Get surge data by hour
+            surge_data = enhanced_data_service.data['surge_by_hour']
+            rides_data = enhanced_data_service.data['rides_trips']
+            
+            # Filter rides for this earner
+            earner_rides = rides_data[rides_data['driver_id'] == earner_id]
+            
+            if earner_rides.empty:
+                return {"error": f"No ride data available for earner {earner_id}"}
+            
+            # Extract hour from start_time and calculate hourly earnings
+            # Handle different datetime formats
+            try:
+                earner_rides['hour'] = pd.to_datetime(earner_rides['start_time']).dt.hour
+            except:
+                # If datetime conversion fails, try to extract hour from string
+                earner_rides['hour'] = earner_rides['start_time'].astype(str).str.extract(r'(\d{1,2}):').astype(int)
+            
+            # Calculate hourly earnings for each hour
+            hourly_earnings = earner_rides.groupby('hour').agg({
+                'net_earnings': ['sum', 'mean', 'count'],
+                'surge_multiplier': 'mean'
+            }).round(2)
+            
+            # Flatten column names
+            hourly_earnings.columns = ['total_earnings', 'avg_earnings_per_trip', 'trip_count', 'avg_surge']
+            hourly_earnings = hourly_earnings.reset_index()
+            
+            # Get city for this earner
+            earners_df = enhanced_data_service.get_earners()
+            earner = earners_df[earners_df['earner_id'] == earner_id]
+            if earner.empty:
+                return {"error": f"Earner {earner_id} not found"}
+            
+            city_id = earner.iloc[0]['home_city_id']
+            
+            # Get city-specific surge data
+            city_surge = surge_data[surge_data['city_id'] == city_id]
+            
+            # Create time slots with real data
+            time_slots = []
+            for hour in range(24):
+                hour_data = hourly_earnings[hourly_earnings['hour'] == hour]
+                surge_data_hour = city_surge[city_surge['hour'] == hour]
+                
+                if not hour_data.empty:
+                    avg_earnings = hour_data.iloc[0]['avg_earnings_per_trip']
+                    trip_count = hour_data.iloc[0]['trip_count']
+                    avg_surge = hour_data.iloc[0]['avg_surge']
+                else:
+                    avg_earnings = 0
+                    trip_count = 0
+                    avg_surge = 1.0
+                
+                if not surge_data_hour.empty:
+                    surge_multiplier = surge_data_hour.iloc[0]['surge_multiplier']
+                else:
+                    surge_multiplier = 1.0
+                
+                # Determine time slot category and color
+                if hour in [7, 8, 9]:  # Morning rush
+                    label = 'Morning Rush'
+                    color = 'bg-green-500'
+                elif hour in [17, 18, 19]:  # Evening rush
+                    label = 'Evening Rush'
+                    color = 'bg-blue-500'
+                elif hour in [22, 23, 0, 1]:  # Night shift
+                    label = 'Night Shift'
+                    color = 'bg-purple-500'
+                elif hour in [14, 15, 16]:  # Low demand
+                    label = 'Low Demand'
+                    color = 'bg-red-500'
+                else:
+                    label = 'Regular Hours'
+                    color = 'bg-gray-500'
+                
+                time_slots.append({
+                    'hour': hour,
+                    'label': label,
+                    'surge_multiplier': surge_multiplier,
+                    'avg_earnings_per_trip': avg_earnings,
+                    'trip_count': trip_count,
+                    'color': color
+                })
+            
+            return {
+                'time_slots': time_slots,
+                'city_id': city_id,
+                'total_rides': len(earner_rides),
+                'avg_earnings_per_trip': earner_rides['net_earnings'].mean()
+            }
+            
+        except Exception as e:
+            print(f"Error getting time-based earnings: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"error": f"Error analyzing time data: {str(e)}"}
 
 # Global instance
 analytics_service = AnalyticsService()

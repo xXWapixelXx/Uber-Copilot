@@ -273,10 +273,20 @@ class EnhancedDataService:
                 self.data['earnings_daily']['city_id'] == city_id
             ]
             
+            # Calculate real hourly earnings for this city
+            if not city_earnings.empty:
+                total_earnings = city_earnings['total_net_earnings'].sum()
+                total_working_mins = (city_earnings['rides_duration_mins'] + city_earnings['eats_duration_mins']).sum()
+                total_working_hours = total_working_mins / 60 if total_working_mins > 0 else 1
+                avg_hourly_earnings = total_earnings / total_working_hours if total_working_hours > 0 else 15.0
+            else:
+                avg_hourly_earnings = 15.0
+            
             cities[f"city_{city_id}"] = {
                 "location_intelligence": location_data,
                 "earnings_stats": {
                     "avg_daily_earnings": city_earnings['total_net_earnings'].mean() if not city_earnings.empty else 0,
+                    "avg_hourly_earnings": avg_hourly_earnings,
                     "total_earners": city_earnings['earner_id'].nunique() if not city_earnings.empty else 0,
                     "total_rides": city_earnings['trips_count'].sum() if not city_earnings.empty else 0,
                     "total_orders": city_earnings['orders_count'].sum() if not city_earnings.empty else 0

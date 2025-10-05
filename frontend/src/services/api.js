@@ -238,4 +238,18 @@ export const apiUtils = {
   },
 };
 
+// Time-based earnings API
+export const timeAPI = {
+  // Get real time-based earnings patterns from Excel data
+  async getTimePatterns(earnerId) {
+    try {
+      const response = await api.get(`/time-patterns/${earnerId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Time API Error:', error);
+      throw new Error('Failed to fetch time patterns. Please try again.');
+    }
+  },
+};
+
 export default api;
