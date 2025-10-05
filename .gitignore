@@ -377,9 +377,7 @@ $RECYCLE.BIN/
 
 # Project specific
 # Data files (keep structure but not actual data)
-backend/data/*.xlsx
-backend/data/*.csv
-backend/data/*.json
+
 !backend/data/.gitkeep
 
 # Logs
