@@ -119,7 +119,7 @@ class AIService:
                     "peak_hours_enhanced": time_patterns_enhanced.get("peak_hours", {})
                 },
                 
-                # City intelligence
+                # City intelligence from Excel data only
                 "city_intelligence": city_comparison
             }
             

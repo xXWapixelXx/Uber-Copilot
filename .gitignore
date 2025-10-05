@@ -469,7 +469,7 @@ test-results/
 playwright-report/
 
 # AI/ML specific
-models/
+
 *.pkl
 *.joblib
 *.h5
